@@ -10,8 +10,8 @@ RUN npm run build
 FROM nginx:1.27-alpine AS runtime
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
-    chown -R appuser:appgroup /usr/share/nginx/html /var/cache/nginx /var/log/nginx /etc/nginx/conf.d
+RUN chown -R nginx:nginx /usr/share/nginx/html /var/cache/nginx /var/log/nginx /etc/nginx/conf.d && \
+    touch /run/nginx.pid && chown nginx:nginx /run/nginx.pid
 USER nginx
 EXPOSE 80
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
