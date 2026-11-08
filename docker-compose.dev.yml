@@ -1,0 +1,51 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: npm run dev
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      HOST: 0.0.0.0
+      CORS_ORIGIN: http://localhost:5173,http://localhost:8080
+      LOG_LEVEL: debug
+      # Dev usa defaults fracos apenas para DX local — nunca use em produção
+      AUTH_USERNAME: ${AUTH_USERNAME:-dev-admin}
+      AUTH_PASSWORD: ${AUTH_PASSWORD:-dev-password-123}
+      AUTH_SECRET: ${AUTH_SECRET:-dev-only-secret-at-least-32-chars-long!!}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}
+      DATA_DIR: /app/data
+      DATA_FILE: connections.json
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-1 minute}
+    volumes:
+      - ./backend:/app
+      - redisscope_data:/app/data
+    ports:
+      - "3000:3000"
+    networks:
+      - redisscope_internal
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    # Em dev você normalmente roda `npm run dev` no host para hot reload.
+    # Este serviço serve apenas o build estático + proxy /api -> backend.
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      - backend
+    networks:
+      - redisscope_internal
+
+volumes:
+  redisscope_data:
+
+networks:
+  redisscope_internal:
+    driver: bridge

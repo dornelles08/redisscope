@@ -1,0 +1,52 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      CORS_ORIGIN: http://localhost:${FRONTEND_PORT:-8080},http://localhost
+      LOG_LEVEL: info
+      # Obrigatórios sem fallback — defina credenciais fortes no .env
+      AUTH_USERNAME: ${AUTH_USERNAME:?Defina AUTH_USERNAME no .env}
+      AUTH_PASSWORD: ${AUTH_PASSWORD:?Defina AUTH_PASSWORD forte no .env}
+      AUTH_SECRET: ${AUTH_SECRET:?Defina AUTH_SECRET com 32+ chars no .env}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Defina ENCRYPTION_KEY (64 hex) no .env}
+      DATA_DIR: /app/data
+      DATA_FILE: connections.json
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-1 minute}
+    volumes:
+      - redisscope_data:/app/data
+    networks:
+      - redisscope_internal
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - redisscope_internal
+
+volumes:
+  redisscope_data:
+
+networks:
+  redisscope_internal:
+    driver: bridge
